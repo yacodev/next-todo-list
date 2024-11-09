@@ -1,4 +1,5 @@
 import prisma from '@/app/lib/prisma';
+import { getUserSessionServer } from '@/auth/actions/auth-actions';
 import { NextResponse } from 'next/server';
 import * as yup from 'yup';
 
@@ -8,14 +9,27 @@ interface Segments {
   };
 }
 
-export async function GET(request: Request, { params }: Segments) {
-  const { id } = params;
+const getTodo = async (id: string) => {
+  const user = await getUserSessionServer();
+  if (!user) {
+    return null;
+  }
   const todo = await prisma.todo.findFirst({
     where: {
       id,
     },
   });
+  if (todo?.userId !== user.id) {
+    return null;
+  }
 
+  return todo;
+};
+
+export async function GET(request: Request, { params }: Segments) {
+  const { id } = params;
+
+  const todo = await getTodo(id);
   if (!todo) {
     return NextResponse.json({ message: 'Todo not found' }, { status: 404 });
   }
@@ -30,11 +44,7 @@ const putSchema = yup.object({
 
 export async function PUT(request: Request, { params }: Segments) {
   const { id } = params;
-  const todo = await prisma.todo.findFirst({
-    where: {
-      id,
-    },
-  });
+  const todo = await getTodo(id);
 
   if (!todo) {
     return NextResponse.json({ message: 'Todo not found' }, { status: 404 });

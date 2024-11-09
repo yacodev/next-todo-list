@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import * as yup from 'yup';
+import { getUserSessionServer } from '@/auth/actions/auth-actions';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -34,6 +35,11 @@ const postSchema = yup.object({
 });
 
 export async function POST(request: Request) {
+  const user = await getUserSessionServer();
+  if (!user) {
+    return NextResponse.json({ message: 'User not found' }, { status: 401 });
+  }
+
   try {
     const { completed, description } = await postSchema.validate(
       await request.json()
@@ -42,6 +48,7 @@ export async function POST(request: Request) {
       data: {
         description,
         completed,
+        userId: user.id,
       },
     });
     return NextResponse.json(todo);
@@ -51,10 +58,16 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
+  const user = await getUserSessionServer();
+  if (!user) {
+    return NextResponse.json({ message: 'User not found' }, { status: 401 });
+  }
+
   try {
     await prisma.todo.deleteMany({
       where: {
         completed: true,
+        userId: user.id,
       },
     });
 

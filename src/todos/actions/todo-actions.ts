@@ -3,6 +3,7 @@
 import prisma from '@/app/lib/prisma';
 import { Todo } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { getUserSessionServer } from '@/auth/actions/auth-actions';
 
 export const sleep = async (seconds: number = 0) => {
   return new Promise((resolve) => {
@@ -33,10 +34,16 @@ export const toggleTodo = async (
 };
 
 export const addTodo = async (description: string) => {
+  const user = await getUserSessionServer();
+
+  if (!user) {
+    throw new Error('User not found');
+  }
   try {
     const todo = await prisma.todo.create({
       data: {
         description,
+        userId: user.id,
       },
     });
     revalidatePath('/dashboard/server-todos');
